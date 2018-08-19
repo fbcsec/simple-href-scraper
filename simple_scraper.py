@@ -27,7 +27,7 @@ def argparse_factory():
                                                     "flv,swf,mp4,webm,pdf,mobi,zip,rar"),
                         nargs='?',
                         default="jpg,jpeg,png,gif,wav,wmv,mp3,flac,mkv,avi,flv,swf,mp4,webm,pdf,mobi,zip,rar")
-    parser.add_argument("-s", "--silent", help="Silent mode, produce no output.", action="store_true")
+    parser.add_argument("-q", "--quiet", help="Enable quiet mode, produce no output.", action="store_true")
     parser.add_argument('-e', '--halt-error', help="Halt on non-fatal download errors.", action="store_true")
     parser.add_argument('-D', '--dry-run', help="Scrape pages but don't download any files", action='store_true')
     parser.add_argument('-w', '--wait-time', help="Amount of time to wait between downloads."
@@ -36,6 +36,8 @@ def argparse_factory():
                                                   " are correct. Default is 1, set to 0 to not wait.",
                         nargs='?',
                         default='1')
+    parser.add_argument("-s", "--skip-exists", help="Skip downloading files that already exist in the destination"
+                                                    "directory", action="store_true")
     return parser.parse_args()
 
 
@@ -132,7 +134,9 @@ def check_and_fix_protocol(original_target, urls, debug=False):
     return fixed_urllist
 
 
-def download_file(url, destination_dir, debug=False, silent=False, halt_on_error=False, dry_run=False, wait_time=0):
+def download_file(url, destination_dir, debug=False, silent=False,
+                  halt_on_error=False, dry_run=False, wait_time=0,
+                  skip_exists=False):
     """Download file and write to destination_dir while handling errors.
     Practically a frontend to urllib.request.urlretrieve()."""
     filename = url.split("/")[-1]
@@ -141,15 +145,25 @@ def download_file(url, destination_dir, debug=False, silent=False, halt_on_error
         print("[+] Downloading %s to %s..." % (url, full_path))
     try:
         if not dry_run:
-            res = urlretrieve(url, full_path)
-            sleep(wait_time)
-            if debug:
-                print(res)
+            if skip_exists:
+                if not os.path.isfile(full_path):
+                    res = urlretrieve(url, full_path)
+                    sleep(wait_time)
+                    if debug:
+                        print(res)
+                else:
+                    if not silent:
+                        print('[!] %s exists, skipping!' % filename)
+            else:
+                res = urlretrieve(url, full_path)
+                sleep(wait_time)
+                if debug:
+                    print(res)
         else:
             if not silent:
                 print("[!] Dry Run, no file saved!")
         if not silent:
-            print("[+] Done.")
+            print("[+] Done.\n")
         return True
     except BaseException as ex:
         if debug:
@@ -168,17 +182,18 @@ def main():
     OUTPUT_DIR = args.destination_directory
     DEBUG_MODE = args.debug
     EXT_LIST = args.file_types
-    SILENT = args.silent
+    QUIET = args.quiet
     HALT_NONFATAL = args.halt_error
     DRY_RUN = args.dry_run
     WAIT_TIME = int(args.wait_time)
+    SKIP_EXISTS= args.skip_exists
 
     if DEBUG_MODE:
         print('[!] DEBUG mode on.')
         print('Arguments object:')
         print("\t" + str(args))
 
-    if not SILENT:
+    if not QUIET:
         print('[+] Scraping %s' % TARGET_URL)
         print('[+] Saving to %s' % OUTPUT_DIR)
 
@@ -186,16 +201,20 @@ def main():
     html = get_target_html(TARGET_URL, debug=DEBUG_MODE)
     found_hotlinks = find_hotlinks(html, exts=EXT_LIST, debug=DEBUG_MODE)
     links_to_download = check_and_fix_protocol(TARGET_URL, found_hotlinks, debug=DEBUG_MODE)
-    if not SILENT:
-        print('[+] Found %d hotlinks.' % len(links_to_download))
+    total_links = len(links_to_download)
+    if not QUIET:
+        print('[+] Found %d hotlinks.' % total_links)
         for link in links_to_download:
             print("\t%s" % link)
         print("\n")
 
-    for link in links_to_download:
+    for index, link in enumerate(links_to_download):
+        if not QUIET:
+            print("[+] [%d / %d]" % (int(index+1), total_links))
         download_file(link, OUTPUT_DIR, debug=DEBUG_MODE,
-                      silent=SILENT, halt_on_error=HALT_NONFATAL,
-                      dry_run=DRY_RUN, wait_time=WAIT_TIME)
+                      silent=QUIET, halt_on_error=HALT_NONFATAL,
+                      dry_run=DRY_RUN, wait_time=WAIT_TIME,
+                      skip_exists=SKIP_EXISTS)
 
 
 if __name__ == "__main__":
