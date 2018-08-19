@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='Simple Scraper',
-      version='0.1.0',
+      version='0.2.0',
       author='fbcsec',
       author_email='fbc@disroot.org',
       scripts=['simple_scraper.py'],
