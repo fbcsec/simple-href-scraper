@@ -10,6 +10,7 @@ import argparse
 from collections import OrderedDict
 import datetime
 import hashlib
+from time import sleep
 from urllib.request import Request, urlopen, urlretrieve
 import os
 from bs4 import BeautifulSoup
@@ -29,6 +30,12 @@ def argparse_factory():
     parser.add_argument("-s", "--silent", help="Silent mode, produce no output.", action="store_true")
     parser.add_argument('-e', '--halt-error', help="Halt on non-fatal download errors.", action="store_true")
     parser.add_argument('-D', '--dry-run', help="Scrape pages but don't download any files", action='store_true')
+    parser.add_argument('-w', '--wait-time', help="Amount of time to wait between downloads."
+                                                  " Increasing this can help with target servers that are rate limited"
+                                                  " and with ensuring that the modification date on output files"
+                                                  " are correct. Default is 1, set to 0 to not wait.",
+                        nargs='?',
+                        default='1')
     return parser.parse_args()
 
 
@@ -125,7 +132,7 @@ def check_and_fix_protocol(original_target, urls, debug=False):
     return fixed_urllist
 
 
-def download_file(url, destination_dir, debug=False, silent=False, halt_on_error=False, dry_run=False):
+def download_file(url, destination_dir, debug=False, silent=False, halt_on_error=False, dry_run=False, wait_time=0):
     """Download file and write to destination_dir while handling errors.
     Practically a frontend to urllib.request.urlretrieve()."""
     filename = url.split("/")[-1]
@@ -135,6 +142,7 @@ def download_file(url, destination_dir, debug=False, silent=False, halt_on_error
     try:
         if not dry_run:
             res = urlretrieve(url, full_path)
+            sleep(wait_time)
             if debug:
                 print(res)
         else:
@@ -163,6 +171,7 @@ def main():
     SILENT = args.silent
     HALT_NONFATAL = args.halt_error
     DRY_RUN = args.dry_run
+    WAIT_TIME = int(args.wait_time)
 
     if DEBUG_MODE:
         print('[!] DEBUG mode on.')
@@ -184,8 +193,9 @@ def main():
         print("\n")
 
     for link in links_to_download:
-        download_file(link, OUTPUT_DIR, debug=DEBUG_MODE, silent=SILENT, halt_on_error=HALT_NONFATAL, dry_run=DRY_RUN)
-
+        download_file(link, OUTPUT_DIR, debug=DEBUG_MODE,
+                      silent=SILENT, halt_on_error=HALT_NONFATAL,
+                      dry_run=DRY_RUN, wait_time=WAIT_TIME)
 
 if __name__ == "__main__":
     main()
