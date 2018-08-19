@@ -27,6 +27,7 @@ def argparse_factory():
                         default="jpg,jpeg,png,gif,wav,wmv,mp3,flac,mkv,avi,flv,swf,mp4,webm,pdf,mobi,zip,rar")
     parser.add_argument("-s", "--silent", help="Silent mode, produce no output.", action="store_true")
     parser.add_argument('-e', '--halt-error', help="Halt on non-fatal download errors.", action="store_true")
+    parser.add_argument('-D', '--dry-run', help="Scrape pages but don't download any files", action='store_true')
     return parser.parse_args()
 
 
@@ -66,7 +67,7 @@ def get_target_html(url, debug=False):
         raise SystemExit("Error, could not connect to target %s" % url)
 
 
-def find_all_hotlinks(html, exts='*', debug=False):
+def find_hotlinks(html, exts='*', debug=False):
     """Build a list of all the href targets in an html document. Then filters the list """
     hotlinks = list()
     filtered_list = list()
@@ -123,7 +124,7 @@ def check_and_fix_protocol(original_target, urls, debug=False):
     return fixed_urllist
 
 
-def download_file(url, destination_dir, debug=False, silent=False, halt_on_error=False):
+def download_file(url, destination_dir, debug=False, silent=False, halt_on_error=False, dry_run=False):
     """Download file and write to destination_dir while handling errors.
     Practically a frontend to urllib.request.urlretrieve()."""
     filename = url.split("/")[-1]
@@ -131,9 +132,13 @@ def download_file(url, destination_dir, debug=False, silent=False, halt_on_error
     if not silent:
         print("[+] Downloading %s to %s..." % (url, full_path))
     try:
-        res = urlretrieve(url, full_path)
-        if debug:
-            print(res)
+        if not dry_run:
+            res = urlretrieve(url, full_path)
+            if debug:
+                print(res)
+        else:
+            if not silent:
+                print("[!] Dry Run, no file saved!")
         print("[+] Done.")
         return True
     except BaseException as ex:
@@ -155,6 +160,7 @@ def main():
     EXT_LIST = args.file_types
     SILENT = args.silent
     HALT_NONFATAL = args.halt_error
+    DRY_RUN = args.dry_run
 
     if DEBUG_MODE:
         print('[!] DEBUG mode on.')
@@ -167,7 +173,7 @@ def main():
 
     check_if_valid_path(OUTPUT_DIR, debug=DEBUG_MODE)
     html = get_target_html(TARGET_URL, debug=DEBUG_MODE)
-    found_hotlinks = find_all_hotlinks(html, exts=EXT_LIST, debug=DEBUG_MODE)
+    found_hotlinks = find_hotlinks(html, exts=EXT_LIST, debug=DEBUG_MODE)
     links_to_download = check_and_fix_protocol(TARGET_URL, found_hotlinks, debug=DEBUG_MODE)
     if not SILENT:
         print('[+] Found %d hotlinks.' % len(links_to_download))
@@ -176,7 +182,7 @@ def main():
         print("\n")
 
     for link in links_to_download:
-        download_file(link, OUTPUT_DIR, debug=DEBUG_MODE, halt_on_error=HALT_NONFATAL)
+        download_file(link, OUTPUT_DIR, debug=DEBUG_MODE, halt_on_error=HALT_NONFATAL, dry_run=DRY_RUN)
 
 
 if __name__ == "__main__":
