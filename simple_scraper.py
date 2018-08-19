@@ -7,6 +7,7 @@ to a specified directory. See this_script.py -h for options.
 """
 
 import argparse
+from collections import OrderedDict
 import datetime
 import hashlib
 from urllib.request import Request, urlopen, urlretrieve
@@ -77,7 +78,7 @@ def find_hotlinks(html, exts='*', debug=False):
         print('Finding hrefs.')
     for link in soup.find_all(href=True):
         hotlinks.append(link['href'])
-    deduped_hotlinks = set(hotlinks)
+    deduped_hotlinks = list(OrderedDict.fromkeys(hotlinks))
     if exts is not '*':
         exts = exts.split(',')
         if debug:
