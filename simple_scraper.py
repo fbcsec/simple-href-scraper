@@ -139,7 +139,8 @@ def download_file(url, destination_dir, debug=False, silent=False, halt_on_error
         else:
             if not silent:
                 print("[!] Dry Run, no file saved!")
-        print("[+] Done.")
+        if not silent:
+            print("[+] Done.")
         return True
     except BaseException as ex:
         if debug:
@@ -182,7 +183,7 @@ def main():
         print("\n")
 
     for link in links_to_download:
-        download_file(link, OUTPUT_DIR, debug=DEBUG_MODE, halt_on_error=HALT_NONFATAL, dry_run=DRY_RUN)
+        download_file(link, OUTPUT_DIR, debug=DEBUG_MODE, silent=SILENT, halt_on_error=HALT_NONFATAL, dry_run=DRY_RUN)
 
 
 if __name__ == "__main__":
