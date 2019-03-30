@@ -51,8 +51,8 @@ def check_if_valid_path(path, debug=False):
             if debug:
                 print("Successfully opened test file.")
                 print("Deleting test file...")
-            os.unlink(path + '/' + filename)
-            return True
+        os.unlink(path + '/' + filename)
+        return True
     except BaseException as ex:
         if debug:
             print(ex)
